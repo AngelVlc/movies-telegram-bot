@@ -1,0 +1,46 @@
+steps:
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  args: ['gsutil', 'cp', 'gs://terraform-moviestelegrambot/terraform.tfvars', '/workspace/terraform/terraform.tfvars']  
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+      docker build -t movies-test --target base .
+      docker run --rm movies-test npm test
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+      docker build -t gcr.io/$PROJECT_ID/release:$COMMIT_SHA --target release .
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push','gcr.io/$PROJECT_ID/release:$COMMIT_SHA']
+- name: 'hashicorp/terraform:0.13.5'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+      cd terraform
+      terraform init || exit 1
+- name: 'hashicorp/terraform:0.13.5'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - | 
+      cd terraform
+      terraform plan -var project_id=967760556060 -var container_image=gcr.io/$PROJECT_ID/release:$COMMIT_SHA || exit 1
+- name: 'hashicorp/terraform:0.13.5'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - | 
+      cd terraform
+      terraform apply -input=false -auto-approve -var project_id=967760556060 -var container_image=gcr.io/$PROJECT_ID/release:$COMMIT_SHA || exit 1
+      terraform output url > /workspace/url.txt
+- name: 'gcr.io/cloud-builders/curl'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - | 
+      curl $(cat /workspace/url.txt)/setWebhook?url=$(cat /workspace/url.txt | base64)
