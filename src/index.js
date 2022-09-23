@@ -1,83 +1,85 @@
-const { Telegraf } = require('telegraf')
-const express = require('express')
-const bodyParser = require('body-parser')
-const MoviesApiHelper  = require('./moviesApiHelper.js')
+const { Telegraf } = require("telegraf");
+const express = require("express");
+const bodyParser = require("body-parser");
+const Searcher = require("./searcher.js");
 
-const apiHelper = new MoviesApiHelper(process.env.API_BASE_URL, process.env.API_USERNAME, process.env.API_PASSWORD)
+const searcher = new Searcher(process.env.LAMBDA_URL);
 
-const webhookPath = '/webhook-path'
+const webhookPath = "/webhook-path";
 
-const expressApp = express()
+const expressApp = express();
 
 expressApp.use(bodyParser.json());
 
-const bot = new Telegraf(process.env.BOT_TOKEN)
+const bot = new Telegraf(process.env.BOT_TOKEN);
 
-expressApp.get('/', (req, res) => {
-    res.send("ANGELOTE")
-})
-
-expressApp.get('/setWebhook', (req, res) => {
-    const url = Buffer.from(req.query.url, 'base64').toString().replace('\n', '')
-    const webhookUrl = `${url}${webhookPath}`
-    bot.telegram.setWebhook(webhookUrl).then(result => {
-            console.log("Webhook set result: ", result)
-            res.send("Webhook set")
-        }).catch(err => {
-            console.log("Error when setting webhook in telegram", err)
-        })
-})
-
-expressApp.use(function(err, req, res, next) {
-    console.error(err.stack);
-    res.status(500).send('Internal error');
+expressApp.get("/", (_req, res) => {
+  res.send("OK");
 });
 
-var lastCommand = ''
+expressApp.get("/setWebhook", (req, res) => {
+  const url = Buffer.from(req.query.url, "base64").toString().replace("\n", "");
+  const webhookUrl = `${url}${webhookPath}`;
+  bot.telegram
+    .setWebhook(webhookUrl)
+    .then((result) => {
+      console.log("Webhook set result: ", result);
+      res.send("Webhook set");
+    })
+    .catch((err) => {
+      console.log("Error setting webhook in telegram", err);
+    });
+});
+
+expressApp.use((err, _req, res, _next) => {
+  console.error(err.stack);
+  res.status(500).send("Internal error");
+});
+
+var lastCommand = "";
 
 expressApp.post(webhookPath, async (req, res) => {
-    const msg = req.body.message
-    const chat = msg.chat
-    const chatId = chat.id
+  const msg = req.body.message;
+  const chat = msg.chat;
+  const chatId = chat.id;
 
-    if (msg.text.toLowerCase() === '/search') {
-        lastCommand = 'search';
-    }
-  
-    const options = {
-        parse_mode: 'HTML'
-    };
+  if (msg.text.toLowerCase() === "/search") {
+    lastCommand = "search";
+  }
 
-    switch (lastCommand) {
-        case 'search':
-            bot.telegram.sendMessage(chatId, 'Title to search:', options);
-            lastCommand = 'title';
-            break;
+  const options = {
+    parse_mode: "HTML",
+  };
 
-        case 'title':
-            const title = msg.text;
-            lastCommand = '';
-            console.log(`search: '${title}' - chatId: '${chatId}`);
-            try {
-                let searchResult = await apiHelper.searchMovie(title);
-                bot.telegram.sendMessage(chatId, searchResult, options);
-            } catch (searchError) {
-                console.error(searchError);
-                bot.telegram.sendMessage(chatId, `ERROR: ${searchError}`, options);
-            }
-            break;
+  switch (lastCommand) {
+    case "search":
+      bot.telegram.sendMessage(chatId, "Title to search:", options);
+      lastCommand = "title";
+      break;
 
-        default:
-            const text = 'Valid commands:\n' +
-            '<b>/search</b>';
-            bot.telegram.sendMessage(chatId, text, options);
-            break;
-    }
-    res.sendStatus(200)
-})
+    case "title":
+      const title = msg.text;
+      lastCommand = "";
+      console.log(`search: '${title}' - chatId: '${chatId}`);
+      try {
+        let searchResult = await searcher.searchMovie(title);
+        bot.telegram.sendMessage(chatId, searchResult, options);
+      } catch (searchError) {
+        console.error(searchError);
+        bot.telegram.sendMessage(chatId, `ERROR: ${searchError}`, options);
+      }
+      break;
 
-const port = process.env.PORT
+    default:
+      const text = "Valid commands:\n" + "<b>/search</b>";
+      bot.telegram.sendMessage(chatId, text, options);
+      break;
+  }
+  res.sendStatus(200);
+});
+
+const port = process.env.PORT;
 
 expressApp.listen(port, () => {
-    console.log(`Example app listening on port ${port}!`)
-})
+  console.log(`App listening on port ${port}!`);
+});

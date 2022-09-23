@@ -21,16 +21,8 @@ resource "google_cloud_run_service" "movies-telegram-bot" {
           value = var.bot_token
         }
         env {
-          name = "API_BASE_URL"
-          value = var.api_base_url
-        }
-        env {
-          name = "API_USERNAME"
-          value = var.api_username
-        }
-        env {
-          name = "API_PASSWORD"
-          value = var.api_password
+          name = "LAMBDA_URL"
+          value = var.lambda_url
         }
       }
     }

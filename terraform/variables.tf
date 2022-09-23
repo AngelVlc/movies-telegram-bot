@@ -10,14 +10,6 @@ variable "bot_token" {
   description = "Telegram bot token"
 }
 
-variable "api_base_url" {
-  description = "API base url"
-}
-
-variable "api_username" {
-  description = "API username"
-}
-
-variable "api_password" {
-  description = "API password"
+variable "lambda_url" {
+  description = "Lambda url"
 }
