@@ -34,8 +34,31 @@ describe("Searcher", () => {
         );
         const result = await helper.searchMovie("title to search");
         expect(spyDoGet).toHaveBeenCalledWith("?title=title%20to%20search");
-        expect(result).toContain("title1 (loc1)");
-        expect(result).toContain("title2 (loc2)");
+        expect(result).toEqual("2 found:\n- title1 (loc1)\n- title2 (loc2)");
+      });
+
+      it("should return a no results message when the lambda returns an empty list", async () => {
+        const lambdaResult = {
+          data: [],
+          status: 200,
+        };
+        spyOn(helper.axiosHelper, "doGet").and.returnValue(lambdaResult);
+
+        const result = await helper.searchMovie("title to search");
+
+        expect(result).toEqual("No results found");
+      });
+
+      it("should return a no results message when the lambda payload is not an array", async () => {
+        const lambdaResult = {
+          data: null,
+          status: 200,
+        };
+        spyOn(helper.axiosHelper, "doGet").and.returnValue(lambdaResult);
+
+        const result = await helper.searchMovie("title to search");
+
+        expect(result).toEqual("No results found");
       });
 
       it ("should return the response status text when the lambda response is not a 200", async () => {

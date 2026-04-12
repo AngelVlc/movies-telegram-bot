@@ -4,22 +4,27 @@ module.exports = function (baseURL) {
   this.axiosHelper = new AxiosHelper(baseURL);
 
   this.searchMovie = async (titleToSearch) => {
-    const endpoint = getSearchEndpoint(titleToSearch);
+    const endpoint = this.getSearchEndpoint(titleToSearch);
     const response = await this.axiosHelper.doGet(endpoint);
 
-    if (response.status == 200) {
-      return processOkResponse(response);
+    if (response.status === 200) {
+      return this.processOkResponse(response);
     }
 
-    return processErrorResponse(response);
+    return this.processErrorResponse(response);
   };
 
-  getSearchEndpoint = (titleToSearch) => {
+  this.getSearchEndpoint = (titleToSearch) => {
     return "?title=" + encodeURIComponent(titleToSearch);
   };
 
-  processOkResponse = (response) => {
-    const data = response.data;
+  this.processOkResponse = (response) => {
+    const data = Array.isArray(response.data) ? response.data : [];
+
+    if (data.length === 0) {
+      return "No results found";
+    }
+
     const result = [];
     result.push(`${data.length} found:`);
 
@@ -27,10 +32,10 @@ module.exports = function (baseURL) {
       result.push(`- ${item.Title} (${item.Location})`);
     });
 
-    return result.join("\n\n");
+    return result.join("\n");
   };
 
-  processErrorResponse = (response) => {
-    return `Response: [${response.status}] ${response.data}`
+  this.processErrorResponse = (response) => {
+    return `Response: [${response.status}] ${response.data}`;
   };
 };
